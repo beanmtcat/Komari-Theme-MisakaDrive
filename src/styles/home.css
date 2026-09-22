@@ -153,7 +153,7 @@
    因此不会把概览、筛选或节点卡向下推。 */
 .renewal-reminder {
   position: relative;
-  z-index: 70;
+  z-index: 110;
   flex: 0 0 auto;
 }
 
@@ -217,7 +217,7 @@
   position: absolute;
   top: calc(100% + 10px);
   right: 0;
-  z-index: 80;
+  z-index: 120;
   width: min(380px, calc(100vw - 32px));
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--border-strong) 68%, transparent);
@@ -225,6 +225,7 @@
   background: var(--surface-elev);
   box-shadow: 0 20px 46px -24px rgba(15, 23, 42, 0.42);
   color: var(--text-primary);
+  min-width: 0;
 }
 
 .renewal-reminder-head {
@@ -431,6 +432,7 @@
     bottom: 12px;
     left: 12px;
     width: auto;
+    min-width: 0;
     max-height: min(72vh, 620px);
     border-radius: 18px;
   }
@@ -795,6 +797,7 @@
 /* 地区筛选栏:与分组栏同一套面板视觉(surface-a + 描边 + 圆角 + 浮起阴影);国旗 chip 换行铺开。
    chip 的悬停/选中态与分组 tab、费用抽屉排序 tab 共用同一组样式。 */
 .home-region-bar {
+  position: relative;
   margin-bottom: 16px;
   padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--border-strong) 54%, transparent);
@@ -803,6 +806,10 @@
   box-shadow:
     0 14px 30px -26px rgba(0, 0, 0, 0.5),
     inset 0 1px 0 color-mix(in srgb, white 16%, transparent);
+}
+
+.home-region-scroll-cue {
+  display: none;
 }
 
 .home-region-chips {
@@ -1053,4 +1060,1680 @@
   width: 22px;
   min-width: 22px;
   height: 22px;
+}
+
+@property --cockpit-angle {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 132deg;
+}
+
+@property --cockpit-progress {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0deg;
+}
+
+/* 驾驶舱：左右圆表负责实时速率，中部以在线状态为主轴组织资产与资源摘要。 */
+.home-cockpit-overview {
+  --cockpit-blue: #438fd2;
+  --cockpit-cyan: #78dcf7;
+  --cockpit-green: #54dda0;
+  --cockpit-red: #ff5962;
+  --cockpit-yellow: #8da4bb;
+  position: relative;
+  z-index: 20;
+  isolation: isolate;
+  display: grid;
+  height: 272px;
+  min-width: 0;
+  grid-template-columns:
+    minmax(190px, 18fr)
+    minmax(135px, 15fr)
+    minmax(440px, 34fr)
+    minmax(135px, 15fr)
+    minmax(190px, 18fr);
+  grid-template-rows: minmax(0, 1fr) 36px;
+  align-items: center;
+  overflow: visible;
+  margin-bottom: 16px;
+  border: 1px solid color-mix(in srgb, var(--border-strong) 48%, transparent);
+  border-radius: 18px;
+  background:
+    radial-gradient(
+      circle at 12% 44%,
+      color-mix(in srgb, #3789d6 calc(var(--surface-alpha) * 0.14%), transparent),
+      transparent 17%
+    ),
+    radial-gradient(
+      circle at 88% 44%,
+      color-mix(in srgb, #3789d6 calc(var(--surface-alpha) * 0.14%), transparent),
+      transparent 17%
+    ),
+    radial-gradient(
+      ellipse at 50% 100%,
+      color-mix(in srgb, #2a70b8 calc(var(--surface-alpha) * 0.14%), transparent),
+      transparent 42%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, #0a0f18 calc(var(--surface-alpha) * 0.98%), transparent),
+      color-mix(in srgb, #050910 calc(var(--surface-alpha) * 0.99%), transparent)
+    );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #d2e7fa calc(var(--surface-alpha) * 0.08%), transparent),
+    inset 0 -28px 54px color-mix(in srgb, #000 calc(var(--surface-alpha) * 0.34%), transparent),
+    0 20px 42px -34px rgba(0, 0, 0, 0.82);
+  color: #f3f6fb;
+}
+
+.home-cockpit-overview::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(
+    color-mix(in srgb, #4487cc calc(var(--surface-alpha) * 0.035%), transparent) 1px,
+    transparent 1px
+  );
+  background-size: 100% 5px;
+  content: "";
+  pointer-events: none;
+}
+
+.home-cockpit-dial-panel {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  height: 100%;
+  place-items: center;
+}
+
+.home-cockpit-dial-panel::before {
+  position: absolute;
+  inset: 17% 7%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(67, 143, 210, 0.16), transparent 68%);
+  filter: blur(14px);
+  content: "";
+  pointer-events: none;
+}
+
+.home-cockpit-dial-panel:first-child {
+  transform: translateX(-2%);
+}
+
+.home-cockpit-dial-panel:last-child {
+  transform: translateX(2%);
+}
+
+.home-cockpit-telemetry {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  max-width: 360px;
+  height: 132px;
+  flex-direction: column;
+  align-self: center;
+  justify-self: center;
+  color: #66bff0;
+  padding: 11px 9px 8px;
+}
+
+.home-cockpit-telemetry::before,
+.home-cockpit-telemetry::after {
+  position: absolute;
+  right: 6px;
+  left: 6px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(96, 184, 236, 0.3), transparent);
+  content: "";
+  pointer-events: none;
+}
+
+.home-cockpit-telemetry::before {
+  top: 31px;
+}
+
+.home-cockpit-telemetry::after {
+  bottom: 25px;
+  opacity: 0.55;
+}
+
+.home-cockpit-telemetry header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #91a7be;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.home-cockpit-telemetry header i {
+  color: var(--cockpit-cyan);
+  font-size: 13px;
+  font-style: normal;
+  text-shadow: 0 0 8px rgba(120, 220, 247, 0.5);
+}
+
+.home-cockpit-telemetry svg {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  margin-top: 7px;
+  overflow: visible;
+}
+
+.home-cockpit-telemetry-grid {
+  fill: none;
+  stroke: rgba(101, 155, 204, 0.15);
+  stroke-width: 0.7;
+  stroke-dasharray: 2 7;
+}
+
+.home-cockpit-telemetry-area {
+  color: #5fc5f5;
+}
+
+.home-cockpit-telemetry-line {
+  fill: none;
+  stroke: #74d6f8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+  filter: drop-shadow(0 0 4px rgba(91, 201, 249, 0.78));
+  vector-effect: non-scaling-stroke;
+}
+
+.home-cockpit-telemetry-pulse {
+  fill: none;
+  stroke: rgba(214, 246, 255, 0.9);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-dasharray: 2 24;
+  filter: drop-shadow(0 0 4px rgba(157, 232, 255, 0.9));
+  vector-effect: non-scaling-stroke;
+  animation: cockpit-telemetry-flow 1.8s linear infinite;
+}
+
+.home-cockpit-telemetry-end-ring,
+.home-cockpit-telemetry-end-dot {
+  vector-effect: non-scaling-stroke;
+}
+
+.home-cockpit-telemetry-end-ring {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 0.8;
+  opacity: 0.34;
+}
+
+.home-cockpit-telemetry-end-dot {
+  fill: #dff8ff;
+  stroke: currentColor;
+  stroke-width: 1.2;
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+@keyframes cockpit-telemetry-flow {
+  to {
+    stroke-dashoffset: -52;
+  }
+}
+
+.home-cockpit-telemetry[data-direction="download"] {
+  color: #7f9fff;
+}
+
+.home-cockpit-telemetry[data-direction="download"] .home-cockpit-telemetry-area {
+  color: #769dff;
+}
+
+.home-cockpit-telemetry[data-direction="download"] .home-cockpit-telemetry-line {
+  stroke: #89a9ff;
+  filter: drop-shadow(0 0 3px rgba(118, 157, 255, 0.62));
+}
+
+.home-cockpit-telemetry-stats {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  color: #8195aa;
+  font-size: 8px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.home-cockpit-telemetry-stats span {
+  min-width: 0;
+  border-radius: 4px;
+  background: rgba(47, 88, 127, 0.1);
+  padding: 2px 4px;
+}
+
+.home-cockpit-telemetry-stats strong {
+  margin-left: 3px;
+  color: #c0d5e8;
+  font-size: 8.5px;
+  font-weight: 680;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-cockpit-dial {
+  --cockpit-angle: 132deg;
+  --cockpit-progress: 0deg;
+  position: relative;
+  width: min(198px, 88%);
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(58, 123, 184, 0.22), transparent 34%),
+    repeating-radial-gradient(circle, transparent 0 11px, rgba(97, 157, 210, 0.03) 12px 13px),
+    radial-gradient(circle, #0a0f17 0 61%, #091827 62% 69%, #04080e 70%);
+  box-shadow:
+    inset 0 0 0 1px rgba(235, 244, 253, 0.82),
+    inset 0 0 0 5px rgba(74, 144, 214, 0.24),
+    inset 0 0 30px rgba(43, 141, 238, 0.24),
+    0 0 28px rgba(43, 141, 238, 0.2);
+  transition:
+    --cockpit-angle 1050ms cubic-bezier(0.16, 1, 0.3, 1),
+    --cockpit-progress 820ms cubic-bezier(0.2, 0.78, 0.28, 1);
+  animation: cockpit-dial-values-boot 900ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+.home-cockpit-dial::before {
+  position: absolute;
+  inset: 2.5%;
+  z-index: 1;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 18deg,
+    transparent 0 17deg,
+    rgba(130, 232, 255, 0.7) 18deg 21deg,
+    transparent 22deg 87deg,
+    rgba(59, 156, 255, 0.52) 88deg 92deg,
+    transparent 93deg 177deg,
+    rgba(130, 232, 255, 0.66) 178deg 181deg,
+    transparent 182deg 267deg,
+    rgba(59, 156, 255, 0.52) 268deg 272deg,
+    transparent 273deg
+  );
+  content: "";
+  pointer-events: none;
+  -webkit-mask: radial-gradient(circle, transparent 0 93%, #000 94% 100%);
+  mask: radial-gradient(circle, transparent 0 93%, #000 94% 100%);
+  animation: cockpit-dial-frame-boot 760ms cubic-bezier(0.18, 0.82, 0.32, 1) both;
+}
+
+.home-cockpit-dial::after {
+  position: absolute;
+  inset: 14%;
+  z-index: 1;
+  border: 1px solid rgba(89, 178, 255, 0.14);
+  border-radius: 50%;
+  box-shadow:
+    inset 0 0 12px rgba(59, 156, 255, 0.07),
+    0 0 10px rgba(59, 156, 255, 0.05);
+  content: "";
+  pointer-events: none;
+}
+
+.home-cockpit-dial-arc {
+  position: absolute;
+  inset: 6%;
+  z-index: 2;
+  border-radius: 50%;
+  background:
+    repeating-conic-gradient(
+      from 132deg,
+      rgba(221, 236, 251, 0.8) 0 0.7deg,
+      transparent 0.8deg 10deg
+    ),
+    conic-gradient(
+      from 132deg,
+      var(--cockpit-cyan) 0 var(--cockpit-progress),
+      rgba(59, 156, 255, 0.22) var(--cockpit-progress) 276deg,
+      transparent 276deg
+    );
+  filter: drop-shadow(0 0 5px rgba(59, 156, 255, 0.58));
+  mask: radial-gradient(circle, transparent 0 76%, #000 77% 85%, transparent 86%);
+  -webkit-mask: radial-gradient(circle, transparent 0 76%, #000 77% 85%, transparent 86%);
+}
+
+.home-cockpit-dial-scan {
+  position: absolute;
+  inset: 9%;
+  z-index: 1;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0 300deg,
+    rgba(130, 232, 255, 0.02) 318deg,
+    rgba(130, 232, 255, 0.2) 348deg,
+    transparent 360deg
+  );
+  pointer-events: none;
+  -webkit-mask: radial-gradient(circle, transparent 0 28%, #000 29% 88%, transparent 89%);
+  mask: radial-gradient(circle, transparent 0 28%, #000 29% 88%, transparent 89%);
+  animation: cockpit-dial-scan 1.15s cubic-bezier(0.2, 0.72, 0.3, 1) both;
+}
+
+.home-cockpit-dial-orbit {
+  position: absolute;
+  inset: 22%;
+  z-index: 1;
+  border: 1px solid rgba(114, 204, 255, 0.12);
+  border-radius: 50%;
+  background:
+    linear-gradient(90deg, transparent 49.5%, rgba(114, 204, 255, 0.09) 50%, transparent 50.5%),
+    linear-gradient(0deg, transparent 49.5%, rgba(114, 204, 255, 0.09) 50%, transparent 50.5%);
+  box-shadow: 0 0 10px rgba(59, 156, 255, 0.06);
+  pointer-events: none;
+}
+
+.home-cockpit-dial-content {
+  position: absolute;
+  inset: 24% 14% 19%;
+  z-index: 6;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  transform: translateY(-6%);
+}
+
+.home-cockpit-dial-label {
+  overflow: hidden;
+  max-width: 100%;
+  color: #8d9bad;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-cockpit-dial-value {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  margin: 7px 0 0;
+  align-items: baseline;
+  justify-content: center;
+  color: #f1f5fa;
+  font-size: clamp(25px, 3vw, 39px);
+  font-weight: 760;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 12px rgba(191, 226, 255, 0.14);
+  transition:
+    color 240ms ease,
+    text-shadow 240ms ease;
+}
+
+.home-cockpit-dial-value[data-animating="true"] {
+  color: #fff;
+  text-shadow:
+    0 0 10px rgba(124, 211, 255, 0.32),
+    0 0 24px rgba(56, 160, 255, 0.16);
+}
+
+.home-cockpit-dial-value::before {
+  position: absolute;
+  inset: -5px -9px;
+  z-index: -1;
+  background: radial-gradient(ellipse, rgba(7, 12, 19, 0.9) 38%, transparent 74%);
+  content: "";
+  pointer-events: none;
+}
+
+.home-cockpit-dial-value span {
+  margin-left: 4px;
+  color: #a9bdcf;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.home-cockpit-dial-detail {
+  overflow: hidden;
+  max-width: 100%;
+  margin: 8px 0 0;
+  color: #aeb9c8;
+  font-size: 11px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-cockpit-detail-compact {
+  display: none;
+}
+
+.home-cockpit-dial-needle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 4;
+  width: 35%;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ffd5d8, var(--cockpit-red) 24% 78%, transparent);
+  filter: drop-shadow(0 0 3px rgba(255, 78, 87, 0.78));
+  transform: rotate(var(--cockpit-angle));
+  transform-origin: 0 50%;
+  will-change: transform;
+}
+
+.home-cockpit-dial-needle::after {
+  position: absolute;
+  top: 50%;
+  right: 100%;
+  width: 24%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 78, 87, 0.72));
+  box-shadow: 0 0 4px rgba(255, 78, 87, 0.5);
+  content: "";
+  transform: translateY(-50%);
+}
+
+.home-cockpit-dial-hub {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 5;
+  width: 16px;
+  height: 16px;
+  border: 1px solid #9bd9ff;
+  border-radius: 50%;
+  background: radial-gradient(circle, #eafaff 0 16%, #286c9f 26%, #04080d 66%);
+  box-shadow: 0 0 8px rgba(59, 156, 255, 0.66);
+  transform: translate(-50%, -50%);
+  animation: cockpit-dial-hub-boot 760ms ease-out both;
+}
+
+@keyframes cockpit-dial-values-boot {
+  from {
+    --cockpit-angle: 132deg;
+    --cockpit-progress: 0deg;
+  }
+}
+
+@keyframes cockpit-dial-frame-boot {
+  from {
+    opacity: 0;
+    transform: rotate(-12deg) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(0) scale(1);
+  }
+}
+
+@keyframes cockpit-dial-scan {
+  from {
+    opacity: 0;
+    transform: rotate(-100deg);
+  }
+  28% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.28;
+    transform: rotate(260deg);
+  }
+}
+
+@keyframes cockpit-dial-hub-boot {
+  from {
+    box-shadow: 0 0 2px rgba(59, 156, 255, 0.18);
+    transform: translate(-50%, -50%) scale(0.7);
+  }
+  62% {
+    box-shadow: 0 0 18px rgba(130, 232, 255, 0.88);
+    transform: translate(-50%, -50%) scale(1.16);
+  }
+  to {
+    box-shadow: 0 0 8px rgba(59, 156, 255, 0.66);
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.home-cockpit-scale-start,
+.home-cockpit-scale-end,
+.home-cockpit-scale-mark {
+  position: absolute;
+  top: var(--cockpit-scale-y);
+  left: var(--cockpit-scale-x);
+  z-index: 3;
+  color: var(--cockpit-yellow);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 6px rgba(120, 220, 247, 0.12);
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+}
+
+.home-cockpit-scale-start {
+  --cockpit-scale-x: 23%;
+  --cockpit-scale-y: 80%;
+}
+
+.home-cockpit-scale-end {
+  --cockpit-scale-x: 77%;
+  --cockpit-scale-y: 80%;
+}
+
+.home-cockpit-scale-mark {
+  color: #70849a;
+  font-size: 8px;
+  font-weight: 620;
+}
+
+.home-cockpit-scale-mark[data-position="one-sixth"] {
+  --cockpit-scale-x: 10%;
+  --cockpit-scale-y: 51%;
+}
+
+.home-cockpit-scale-mark[data-position="one-third"] {
+  --cockpit-scale-x: 21%;
+  --cockpit-scale-y: 22%;
+}
+
+.home-cockpit-scale-mark[data-position="half"] {
+  --cockpit-scale-x: 50%;
+  --cockpit-scale-y: 10%;
+}
+
+.home-cockpit-scale-mark[data-position="two-thirds"] {
+  --cockpit-scale-x: 79%;
+  --cockpit-scale-y: 22%;
+}
+
+.home-cockpit-scale-mark[data-position="five-sixths"] {
+  --cockpit-scale-x: 90%;
+  --cockpit-scale-y: 51%;
+}
+
+.home-cockpit-dial-panel > .overview-card-rating {
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  z-index: 6;
+  max-width: 5.5em;
+  font-size: 10px;
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+.home-cockpit-center-panel {
+  position: relative;
+  z-index: 8;
+  display: flex;
+  min-width: 0;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 2% 10px;
+  text-align: center;
+  overflow: visible;
+}
+
+.home-cockpit-center-topline {
+  position: absolute;
+  top: 14px;
+  right: 8%;
+  left: 8%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #8f9caf;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.home-cockpit-ready {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--cockpit-green);
+  text-shadow: 0 0 8px rgba(80, 232, 160, 0.38);
+}
+
+.home-cockpit-ready i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.home-cockpit-node-cluster {
+  position: relative;
+  width: 100%;
+  max-width: 280px;
+  height: 144px;
+  flex: 0 1 auto;
+  grid-column: 2;
+  margin: 0 auto;
+  transform: translateY(-10px);
+}
+
+.home-cockpit-node-cluster svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.home-cockpit-node-ring-guide,
+.home-cockpit-node-ring-sweep {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.home-cockpit-node-ring-guide {
+  stroke: rgba(102, 161, 211, 0.27);
+  stroke-width: 1.15;
+  stroke-dasharray: 2 5;
+}
+
+.home-cockpit-node-ring-sweep {
+  stroke: var(--cockpit-cyan);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-dasharray: 26 430;
+  filter: drop-shadow(0 0 5px rgba(120, 220, 247, 0.72));
+  opacity: 0.72;
+  animation: cockpit-node-ring-scan 4.8s linear infinite;
+}
+
+@keyframes cockpit-node-ring-scan {
+  to {
+    stroke-dashoffset: -456;
+  }
+}
+
+.home-cockpit-node-marker {
+  fill: rgba(124, 142, 163, 0.38);
+  stroke: rgba(7, 14, 23, 0.82);
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cockpit-node-marker-in 420ms both cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.home-cockpit-node-marker[data-state="online"] {
+  fill: var(--cockpit-green);
+  filter: drop-shadow(0 0 3px rgba(80, 232, 160, 0.82));
+}
+
+.home-cockpit-node-marker[data-state="offline"] {
+  fill: var(--cockpit-red);
+  filter: drop-shadow(0 0 3px rgba(255, 78, 87, 0.76));
+}
+
+@keyframes cockpit-node-marker-in {
+  from {
+    opacity: 0;
+    transform: scale(0.25);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.home-cockpit-online {
+  position: absolute;
+  top: 51px;
+  right: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.home-cockpit-online p {
+  display: flex;
+  margin: 0;
+  align-items: baseline;
+  color: #f7f9fc;
+  font-size: clamp(38px, 4.8vw, 60px);
+  font-weight: 760;
+  letter-spacing: -0.06em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-cockpit-online p span {
+  margin-left: 6px;
+  color: #7f8b9e;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.home-cockpit-online > span {
+  align-self: center;
+  color: #aeb9c8;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+}
+
+.home-cockpit-center-stage {
+  --cockpit-summary-offset: 84px;
+  position: relative;
+  z-index: 20;
+  display: grid;
+  width: min(550px, calc(100% + 80px));
+  min-width: 0;
+  height: 148px;
+  grid-template-columns: minmax(105px, 1fr) 280px minmax(105px, 1fr);
+  align-items: center;
+  gap: 5px;
+  overflow: visible;
+  color: #8f9caf;
+}
+
+.home-cockpit-asset {
+  position: relative;
+  display: flex;
+  min-height: 38px;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: #8f9caf;
+  padding-right: 0;
+  text-align: center;
+  right: calc(50% + var(--cockpit-summary-offset));
+}
+
+.home-cockpit-side-summary {
+  position: absolute;
+  top: 50%;
+  z-index: 30;
+  width: 110px;
+  grid-column: 1 / -1;
+  grid-row: 1;
+  overflow: visible;
+  transform: translateY(-50%);
+}
+
+.home-cockpit-summary-label {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+  color: #77899c;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.home-cockpit-asset strong {
+  overflow: hidden;
+  color: #e7eef8;
+  font-size: 13px;
+  font-weight: 720;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.home-cockpit-summary-heading {
+  display: flex;
+  max-width: 100%;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.home-cockpit-asset .overview-card-action {
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
+  color: #8f9caf;
+}
+
+.home-cockpit-asset .overview-card-action svg {
+  width: 12px;
+  height: 12px;
+}
+
+.home-cockpit-asset .renewal-reminder-dot {
+  width: 4px;
+  height: 4px;
+  border-width: 1px;
+}
+
+.home-cockpit-summary-heading > .renewal-reminder {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.home-cockpit-summary-rating {
+  position: static;
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  flex: 0 0 auto;
+  margin-left: 2px;
+  border-radius: 50%;
+  background: var(--status-success);
+  box-shadow: 0 0 6px currentColor;
+}
+
+.home-cockpit-summary-rating[data-rating-level="1"] {
+  background: var(--accent-500);
+}
+
+.home-cockpit-summary-rating[data-rating-level="2"] {
+  background: var(--progress-memory);
+}
+
+.home-cockpit-summary-rating[data-rating-level="3"] {
+  background: #f5b84b;
+}
+
+.home-cockpit-traffic-summary {
+  display: inline-flex;
+  min-height: 38px;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border-radius: 7px;
+  color: #8f9caf;
+  padding: 3px 4px;
+  text-align: center;
+  transition: background 160ms ease, color 160ms ease;
+  left: calc(50% + var(--cockpit-summary-offset));
+  white-space: nowrap;
+}
+
+.home-cockpit-resource-strip {
+  display: grid;
+  width: min(310px, 72%);
+  min-width: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: -3px;
+}
+
+.home-cockpit-resource-item {
+  --cockpit-resource-color: var(--progress-cpu);
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.home-cockpit-resource-item[data-resource="memory"] {
+  --cockpit-resource-color: var(--progress-memory);
+}
+
+.home-cockpit-resource-item[data-resource="disk"] {
+  --cockpit-resource-color: var(--progress-disk);
+}
+
+.home-cockpit-resource-head {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 5px;
+  line-height: 1;
+}
+
+.home-cockpit-resource-head small {
+  overflow: hidden;
+  color: #71869b;
+  font-size: 8px;
+  font-weight: 720;
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-cockpit-resource-head strong {
+  color: #b9c9d9;
+  font-size: 9px;
+  font-weight: 720;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.home-cockpit-resource-track {
+  position: relative;
+  display: block;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(117, 139, 163, 0.18);
+}
+
+.home-cockpit-resource-track i {
+  display: block;
+  width: var(--cockpit-resource-progress);
+  height: 100%;
+  border-radius: inherit;
+  background: var(--cockpit-resource-color);
+  box-shadow: 0 0 5px color-mix(in srgb, var(--cockpit-resource-color) 62%, transparent);
+  transition: width 820ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.home-cockpit-resource-detail {
+  overflow: hidden;
+  color: #687d92;
+  font-size: 7px;
+  font-weight: 620;
+  line-height: 1;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-cockpit-traffic-summary:hover {
+  background: rgba(61, 156, 255, 0.1);
+  color: var(--cockpit-cyan);
+}
+
+.home-cockpit-traffic-summary strong {
+  color: #e7eef8;
+  font-size: 13px;
+  font-weight: 720;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.home-cockpit-traffic-summary strong small {
+  margin-left: 3px;
+  color: #93a6ba;
+  font-size: 9px;
+  font-weight: 650;
+}
+
+.home-cockpit-toolbar {
+  position: relative;
+  z-index: 12;
+  display: flex;
+  min-width: 0;
+  height: 100%;
+  grid-column: 1 / -1;
+  grid-row: 2;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(19, 42, 69, 0.24) 32%,
+    rgba(19, 42, 69, 0.24) 68%,
+    transparent
+  );
+  padding: 2px 10px;
+}
+
+.home-cockpit-toolbar .home-group-tabs {
+  width: auto;
+  min-width: 0;
+  flex: 0 0 auto;
+  gap: 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.home-cockpit-toolbar .home-group-tabs button {
+  min-width: 50px;
+  min-height: 28px;
+  flex: 0 0 auto;
+  border-radius: 6px;
+  padding: 0 8px;
+  color: #8f9caf;
+  font-size: 10px;
+}
+
+.home-cockpit-toolbar .home-group-tabs button[data-active="true"] {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: inset 0 -2px 0 var(--cockpit-cyan);
+  color: var(--cockpit-cyan);
+}
+
+.home-cockpit-toolbar .home-region-bar {
+  min-width: 0;
+  max-width: 48%;
+  flex: 0 1 auto;
+  overflow: hidden;
+  margin: 0;
+  border: 0;
+  border-left: 1px solid rgba(107, 154, 201, 0.16);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0 0 0 5px;
+  scrollbar-width: none;
+}
+
+.home-cockpit-toolbar .home-region-bar::-webkit-scrollbar,
+.home-cockpit-toolbar .home-group-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.home-cockpit-toolbar .home-region-chips {
+  flex-wrap: nowrap;
+  gap: 2px;
+  overflow-x: auto;
+  padding-right: 12px;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+}
+
+.home-cockpit-toolbar .home-region-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.home-cockpit-toolbar .home-region-chip {
+  min-height: 28px;
+  flex: 0 0 auto;
+  gap: 4px;
+  border-radius: 6px;
+  padding: 0 6px;
+  color: #8f9caf;
+  font-size: 10px;
+  scroll-snap-align: start;
+}
+
+.home-cockpit-toolbar .home-region-chip[data-active="true"] {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: inset 0 -2px 0 var(--cockpit-cyan);
+  color: var(--cockpit-cyan);
+}
+
+.home-cockpit-toolbar .home-region-chip-count {
+  min-width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  padding: 0 4px;
+  background: rgba(131, 153, 178, 0.14);
+  color: #718095;
+  font-size: 9px;
+}
+
+.home-cockpit-toolbar .home-sort {
+  flex: 0 0 auto;
+}
+
+.home-cockpit-toolbar .home-sort-trigger {
+  height: 28px;
+  border-color: transparent;
+  border-left-color: rgba(107, 154, 201, 0.16);
+  border-radius: 0;
+  background: transparent;
+  color: #8f9caf;
+  padding: 0 9px;
+  font-size: 10px;
+}
+
+.home-cockpit-toolbar .home-sort-panel {
+  top: auto;
+  right: 0;
+  bottom: calc(100% + 8px);
+}
+
+/* 亮色驾驶舱：保留奔驰式蓝色仪表氛围，但改用银白玻璃、深色读数与更清晰的刻度。
+   不能只让页面底色切换，否则整块驾驶舱仍像一张固定的暗色图片。 */
+:root[data-appearance="light"] .home-cockpit-overview {
+  --cockpit-blue: #287ebd;
+  --cockpit-cyan: #1487bd;
+  --cockpit-green: #15956f;
+  --cockpit-red: #e34c59;
+  --cockpit-yellow: #637f98;
+  border-color: color-mix(in srgb, #397da9 30%, transparent);
+  background:
+    radial-gradient(
+      circle at 12% 44%,
+      color-mix(in srgb, #68b6e5 calc(var(--surface-alpha) * 0.25%), transparent),
+      transparent 19%
+    ),
+    radial-gradient(
+      circle at 88% 44%,
+      color-mix(in srgb, #68b6e5 calc(var(--surface-alpha) * 0.25%), transparent),
+      transparent 19%
+    ),
+    radial-gradient(
+      ellipse at 50% 100%,
+      color-mix(in srgb, #a8d8f3 calc(var(--surface-alpha) * 0.34%), transparent),
+      transparent 46%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, #f8fcff calc(var(--surface-alpha) * 0.96%), transparent),
+      color-mix(in srgb, #e7f2fa calc(var(--surface-alpha) * 0.98%), transparent)
+    );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff calc(var(--surface-alpha) * 0.82%), transparent),
+    inset 0 -28px 54px color-mix(in srgb, #65a8d0 calc(var(--surface-alpha) * 0.12%), transparent),
+    0 20px 42px -34px rgba(42, 91, 124, 0.34);
+  color: #17334a;
+}
+
+:root[data-appearance="light"] .home-cockpit-overview::before {
+  background: linear-gradient(rgba(50, 119, 164, 0.065) 1px, transparent 1px);
+}
+
+:root[data-appearance="light"] .home-cockpit-dial-panel::before {
+  background: radial-gradient(circle, rgba(38, 139, 198, 0.18), transparent 68%);
+}
+
+:root[data-appearance="light"] .home-cockpit-dial {
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.94), transparent 34%),
+    repeating-radial-gradient(circle, transparent 0 11px, rgba(39, 112, 159, 0.055) 12px 13px),
+    radial-gradient(circle, #eef8fe 0 61%, #d6ebf8 62% 69%, #f8fcff 70%);
+  box-shadow:
+    inset 0 0 0 1px rgba(38, 91, 127, 0.7),
+    inset 0 0 0 5px rgba(54, 145, 203, 0.2),
+    inset 0 0 30px rgba(59, 156, 216, 0.18),
+    0 0 24px rgba(42, 125, 181, 0.18);
+}
+
+:root[data-appearance="light"] .home-cockpit-dial::before {
+  background: conic-gradient(
+    from 18deg,
+    transparent 0 17deg,
+    rgba(13, 121, 173, 0.78) 18deg 21deg,
+    transparent 22deg 87deg,
+    rgba(37, 115, 182, 0.58) 88deg 92deg,
+    transparent 93deg 177deg,
+    rgba(13, 121, 173, 0.74) 178deg 181deg,
+    transparent 182deg 267deg,
+    rgba(37, 115, 182, 0.58) 268deg 272deg,
+    transparent 273deg
+  );
+}
+
+:root[data-appearance="light"] .home-cockpit-dial::after,
+:root[data-appearance="light"] .home-cockpit-dial-orbit {
+  border-color: rgba(43, 122, 173, 0.2);
+}
+
+:root[data-appearance="light"] .home-cockpit-dial-arc {
+  background:
+    repeating-conic-gradient(
+      from 132deg,
+      rgba(37, 75, 102, 0.72) 0 0.7deg,
+      transparent 0.8deg 10deg
+    ),
+    conic-gradient(
+      from 132deg,
+      var(--cockpit-cyan) 0 var(--cockpit-progress),
+      rgba(32, 120, 179, 0.2) var(--cockpit-progress) 276deg,
+      transparent 276deg
+    );
+  filter: drop-shadow(0 0 4px rgba(29, 128, 183, 0.38));
+}
+
+:root[data-appearance="light"] .home-cockpit-dial-scan {
+  background: conic-gradient(
+    from 0deg,
+    transparent 0 300deg,
+    rgba(20, 135, 189, 0.02) 318deg,
+    rgba(20, 135, 189, 0.18) 348deg,
+    transparent 360deg
+  );
+}
+
+:root[data-appearance="light"] .home-cockpit-dial-label,
+:root[data-appearance="light"] .home-cockpit-dial-detail,
+:root[data-appearance="light"] .home-cockpit-dial-value span,
+:root[data-appearance="light"] .home-cockpit-scale-start,
+:root[data-appearance="light"] .home-cockpit-scale-end,
+:root[data-appearance="light"] .home-cockpit-scale-mark {
+  color: #58758d;
+}
+
+:root[data-appearance="light"] .home-cockpit-dial-value,
+:root[data-appearance="light"] .home-cockpit-dial-value[data-animating="true"] {
+  color: #102c43;
+  text-shadow: 0 0 12px rgba(50, 135, 188, 0.16);
+}
+
+:root[data-appearance="light"] .home-cockpit-dial-value::before {
+  background: radial-gradient(ellipse, rgba(245, 251, 255, 0.92) 38%, transparent 74%);
+}
+
+:root[data-appearance="light"] .home-cockpit-dial-hub {
+  border-color: #2678a9;
+  background: radial-gradient(circle, #fff 0 16%, #58a8d3 27%, #d8edf8 68%);
+  box-shadow: 0 0 8px rgba(27, 124, 181, 0.46);
+}
+
+:root[data-appearance="light"] .home-cockpit-telemetry,
+:root[data-appearance="light"] .home-cockpit-telemetry header,
+:root[data-appearance="light"] .home-cockpit-center-topline,
+:root[data-appearance="light"] .home-cockpit-center-stage,
+:root[data-appearance="light"] .home-cockpit-asset,
+:root[data-appearance="light"] .home-cockpit-traffic-summary {
+  color: #526f86;
+}
+
+:root[data-appearance="light"] .home-cockpit-telemetry-grid {
+  stroke: rgba(48, 115, 159, 0.2);
+}
+
+:root[data-appearance="light"] .home-cockpit-telemetry-stats span {
+  background: rgba(61, 139, 188, 0.08);
+}
+
+:root[data-appearance="light"] .home-cockpit-telemetry-stats strong,
+:root[data-appearance="light"] .home-cockpit-online p,
+:root[data-appearance="light"] .home-cockpit-asset strong,
+:root[data-appearance="light"] .home-cockpit-traffic-summary strong {
+  color: #17334a;
+}
+
+:root[data-appearance="light"] .home-cockpit-online p span,
+:root[data-appearance="light"] .home-cockpit-online > span,
+:root[data-appearance="light"] .home-cockpit-summary-label,
+:root[data-appearance="light"] .home-cockpit-resource-head small,
+:root[data-appearance="light"] .home-cockpit-resource-detail,
+:root[data-appearance="light"] .home-cockpit-traffic-summary strong small {
+  color: #59758c;
+}
+
+:root[data-appearance="light"] .home-cockpit-resource-head strong {
+  color: #294d68;
+}
+
+:root[data-appearance="light"] .home-cockpit-resource-track {
+  background: rgba(56, 102, 133, 0.16);
+}
+
+:root[data-appearance="light"] .home-cockpit-node-ring-guide {
+  stroke: rgba(38, 111, 160, 0.34);
+}
+
+:root[data-appearance="light"] .home-cockpit-node-marker {
+  stroke: rgba(238, 248, 253, 0.94);
+}
+
+:root[data-appearance="light"] .home-cockpit-toolbar {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(83, 156, 201, 0.12) 32%,
+    rgba(83, 156, 201, 0.12) 68%,
+    transparent
+  );
+}
+
+:root[data-appearance="light"] .home-cockpit-toolbar .home-group-tabs button,
+:root[data-appearance="light"] .home-cockpit-toolbar .home-region-chip,
+:root[data-appearance="light"] .home-cockpit-toolbar .home-sort-trigger {
+  color: #58748a;
+}
+
+:root[data-appearance="light"] .home-cockpit-toolbar .home-region-bar,
+:root[data-appearance="light"] .home-cockpit-toolbar .home-sort-trigger {
+  border-left-color: rgba(45, 115, 158, 0.2);
+}
+
+:root[data-appearance="light"] .home-cockpit-toolbar .home-region-chip-count {
+  background: rgba(55, 118, 158, 0.11);
+  color: #527088;
+}
+
+.home-cockpit-overview.is-dense {
+  height: 252px;
+  margin-bottom: 14px;
+}
+
+.home-cockpit-overview.is-dense .home-cockpit-dial {
+  width: min(180px, 84%);
+}
+
+@media (max-width: 1100px) {
+  .home-cockpit-overview,
+  .home-cockpit-overview.is-dense {
+    grid-template-columns: minmax(0, 23fr) minmax(440px, 54fr) minmax(0, 23fr);
+  }
+
+  .home-cockpit-telemetry {
+    display: none;
+  }
+
+}
+
+@media (max-width: 760px) {
+  .home-cockpit-overview,
+  .home-cockpit-overview.is-dense {
+    height: 232px;
+    grid-template-columns: minmax(0, 27fr) minmax(148px, 46fr) minmax(0, 27fr);
+    grid-template-rows: minmax(0, 1fr) 34px;
+    border-radius: 15px;
+  }
+
+  .home-cockpit-dial {
+    width: min(162px, 90%);
+  }
+
+  .home-cockpit-dial-panel:first-child {
+    transform: translateX(-5%);
+  }
+
+  .home-cockpit-dial-panel:last-child {
+    transform: translateX(5%);
+  }
+
+  .home-cockpit-dial-value {
+    font-size: clamp(18px, 4.8vw, 28px);
+  }
+
+  .home-cockpit-detail-full {
+    display: none;
+  }
+
+  .home-cockpit-detail-compact {
+    display: inline;
+  }
+
+  .home-cockpit-center-panel {
+    padding-inline: 0;
+  }
+
+  .home-cockpit-center-stage {
+    width: 208px;
+    height: 114px;
+    grid-template-columns: 208px;
+    gap: 0;
+  }
+
+  .home-cockpit-node-cluster {
+    width: 208px;
+    max-width: none;
+    height: 108px;
+    grid-column: 1;
+    transform: translateY(-10px);
+  }
+
+  .home-cockpit-center-topline {
+    right: 2%;
+    left: 2%;
+  }
+
+  .home-cockpit-online {
+    top: 38px;
+    gap: 4px;
+  }
+
+  .home-cockpit-online p {
+    font-size: 44px;
+  }
+
+  .home-cockpit-online p span {
+    margin-left: 5px;
+    font-size: 14px;
+  }
+
+  .home-cockpit-online > span {
+    font-size: 10px;
+  }
+
+  .home-cockpit-side-summary {
+    display: none;
+  }
+
+  .home-cockpit-traffic-summary {
+    padding-inline: 2px;
+  }
+
+  .home-cockpit-side-summary .home-cockpit-summary-label,
+  .home-cockpit-side-summary .home-cockpit-summary-rating {
+    display: none;
+  }
+
+  .home-cockpit-resource-strip {
+    width: 220px;
+    gap: 7px;
+  }
+}
+
+@media (max-width: 520px) {
+  .home-cockpit-overview,
+  .home-cockpit-overview.is-dense {
+    height: 232px;
+    grid-template-columns: minmax(0, 26fr) minmax(132px, 48fr) minmax(0, 26fr);
+    grid-template-rows: minmax(0, 1fr) 32px;
+    margin-bottom: 12px;
+    border-radius: 13px;
+  }
+
+  .home-cockpit-dial {
+    width: min(112px, 92%);
+  }
+
+  .home-cockpit-dial-label {
+    font-size: 8px;
+    letter-spacing: 0.05em;
+  }
+
+  .home-cockpit-dial-value {
+    margin-top: 4px;
+    font-size: clamp(15px, 5.5vw, 22px);
+  }
+
+  .home-cockpit-dial-value span {
+    margin-left: 2px;
+    font-size: 7px;
+  }
+
+  .home-cockpit-dial-detail,
+  .home-cockpit-scale-start,
+  .home-cockpit-scale-end,
+  .home-cockpit-scale-mark,
+  .home-cockpit-dial-panel > .overview-card-rating,
+  .home-cockpit-sync,
+  .home-cockpit-asset > .overview-card-rating {
+    display: none;
+  }
+
+  .home-cockpit-dial-hub {
+    width: 10px;
+    height: 10px;
+  }
+
+  .home-cockpit-center-topline {
+    top: 10px;
+    justify-content: center;
+    font-size: 8px;
+  }
+
+  .home-cockpit-online p {
+    font-size: 44px;
+  }
+
+  .home-cockpit-node-cluster {
+    width: 208px;
+    height: 108px;
+    margin-top: 0;
+    transform: translateY(-10px);
+  }
+
+  .home-cockpit-online {
+    top: 38px;
+  }
+
+  .home-cockpit-asset strong {
+    font-size: 9px;
+  }
+
+  .home-cockpit-center-stage {
+    width: 208px;
+    height: 114px;
+    grid-template-columns: 208px;
+    gap: 0;
+  }
+
+  .home-cockpit-side-summary {
+    width: 58px;
+    min-height: 24px;
+  }
+
+  .home-cockpit-traffic-summary {
+    gap: 3px;
+    padding-inline: 2px;
+  }
+
+  .home-cockpit-traffic-summary strong {
+    font-size: 9px;
+  }
+
+  .home-cockpit-traffic-summary strong small {
+    margin-left: 1px;
+    font-size: 7px;
+  }
+
+  .home-cockpit-resource-strip {
+    width: 220px;
+    gap: 7px;
+    margin-top: -3px;
+  }
+
+  .home-cockpit-resource-item {
+    gap: 2px;
+  }
+
+  .home-cockpit-resource-head small,
+  .home-cockpit-resource-head strong {
+    font-size: 7px;
+  }
+
+  .home-cockpit-resource-detail {
+    font-size: 6px;
+  }
+
+  .home-cockpit-toolbar {
+    gap: 3px;
+    padding: 2px 5px;
+  }
+
+  .home-cockpit-toolbar .home-group-tabs {
+    flex: 0 0 auto;
+  }
+
+  .home-cockpit-toolbar .home-group-tabs button {
+    min-width: 43px;
+    min-height: 28px;
+    padding: 0 6px;
+    font-size: 9px;
+  }
+
+  .home-cockpit-toolbar .home-region-chip {
+    min-height: 28px;
+    padding: 0 5px;
+    font-size: 9px;
+  }
+
+  .home-cockpit-toolbar .home-region-chips {
+    padding-right: 24px;
+    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent 100%);
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 24px), transparent 100%);
+  }
+
+  .home-cockpit-toolbar .home-region-scroll-cue {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    z-index: 2;
+    display: grid;
+    width: 24px;
+    height: 28px;
+    place-items: center;
+    background: linear-gradient(90deg, transparent, rgba(6, 13, 22, 0.92) 54%);
+    color: var(--cockpit-cyan);
+    font-size: 18px;
+    line-height: 1;
+    pointer-events: none;
+    text-shadow: 0 0 7px rgba(120, 220, 247, 0.5);
+    transform: translateY(-50%);
+  }
+
+  .home-cockpit-toolbar .home-region-chip-count,
+  .home-cockpit-toolbar .home-sort-trigger span {
+    display: none;
+  }
+
+  .home-cockpit-toolbar .home-sort-trigger {
+    width: 28px;
+    height: 28px;
+    justify-content: center;
+    padding: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-cockpit-dial {
+    transition: none;
+    animation: none;
+  }
+
+  .home-cockpit-dial-needle,
+  .home-cockpit-dial::before,
+  .home-cockpit-dial-scan,
+  .home-cockpit-dial-hub {
+    animation: none;
+  }
+
+  .home-cockpit-telemetry-pulse {
+    animation: none;
+  }
+
+  .home-cockpit-node-ring-sweep,
+  .home-cockpit-node-marker {
+    animation: none;
+  }
 }

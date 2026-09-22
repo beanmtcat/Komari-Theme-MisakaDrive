@@ -368,15 +368,20 @@ function CompactNodeChips({
   // 完整 tag 列表挂在 lane 的 tooltip 上;chip 不带自己的 title,hover 会穿透到 lane 上 ——
   // 被裁剪 lane 折行挤出去的 tag 就靠这个保持可见,不用显示"+N"角标。
   const tagTitle = joinTagTitle(tags);
+  const hasIpBadge = Boolean(ipv4 || ipv6);
+
+  // 线上公开接口可能不下发备注、标签和 IP；此时不要保留一条空的 24px chip 行，
+  // 否则移动端会在节点名称和指标之间出现一块看似“内容丢失”的空白。
+  if (!subtitle && tags.length === 0 && !hasIpBadge) return null;
 
   return (
     <div className="compact-node-chip-row">
+      <IpStackBadges ipv4={ipv4} ipv6={ipv6} />
       {subtitle && (
         <span className="compact-node-subtitle" title={subtitle}>
           {subtitle}
         </span>
       )}
-      <IpStackBadges ipv4={ipv4} ipv6={ipv6} />
       {tags.length > 0 && (
         <div className="compact-node-tag-lane" title={tagTitle}>
           {tags.map((tag, index) => (

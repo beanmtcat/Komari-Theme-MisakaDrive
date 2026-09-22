@@ -16,6 +16,12 @@ function node(partial: Partial<HomeNodeSummary> & Pick<HomeNodeSummary, "uuid">)
     trafficUp: 0,
     netDown: 0,
     netUp: 0,
+    cpuCores: 0,
+    cpuPct: 0,
+    ramUsed: 0,
+    ramTotal: 0,
+    diskUsed: 0,
+    diskTotal: 0,
     weight: 0,
     ...partial,
   };

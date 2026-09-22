@@ -82,7 +82,7 @@ export const NodeCard = memo(function NodeCard({
     ping,
     pingBuckets,
     homepagePingLines,
-    footerTags,
+    tags,
     subtitle,
     expire,
     expireColor,
@@ -107,10 +107,20 @@ export const NodeCard = memo(function NodeCard({
     <article
       className={clsx("server-card", isOffline && "is-offline")}
     >
-      <div className="server-card-content">
+      <div
+        className={clsx(
+          "server-card-content",
+            !subtitle &&
+            !node.ipv4 &&
+            !node.ipv6 &&
+            tags.length === 0 &&
+            "is-header-compact",
+        )}
+      >
         <NodeCardHeader
           node={node}
           subtitle={subtitle}
+          tags={tags}
           osName={osName}
           showTodayTraffic={showTodayTraffic}
         />
@@ -180,7 +190,7 @@ export const NodeCard = memo(function NodeCard({
           expire={expire}
           expireColor={expireColor}
           uptime={uptime}
-          footerTags={footerTags}
+          footerTags={[]}
           renewalPrice={renewalPrice}
         />
       </div>
@@ -191,11 +201,13 @@ export const NodeCard = memo(function NodeCard({
 function NodeCardHeader({
   node,
   subtitle,
+  tags,
   osName,
   showTodayTraffic,
 }: {
   node: NodeCardNode;
   subtitle: string;
+  tags: DisplayTag[];
   osName: string;
   showTodayTraffic: boolean;
 }) {
@@ -215,12 +227,19 @@ function NodeCardHeader({
         </div>
         {(subtitle || node.ipv4 || node.ipv6) && (
           <div className="server-card-subtitle-row">
+            <IpStackBadges ipv4={node.ipv4} ipv6={node.ipv6} />
             {subtitle && (
               <span className="server-card-subtitle" title={subtitle}>
                 {subtitle}
               </span>
             )}
-            <IpStackBadges ipv4={node.ipv4} ipv6={node.ipv6} />
+          </div>
+        )}
+        {tags.length > 0 && (
+          <div className="server-card-header-tags" title={joinTagTitle(tags)}>
+            {tags.map((tag, index) => (
+              <FooterTagChip key={`${tag.label}-${index}`} tag={tag} />
+            ))}
           </div>
         )}
       </div>

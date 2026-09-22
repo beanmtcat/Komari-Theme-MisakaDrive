@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleDollarSign } from "lucide-react";
@@ -17,11 +25,9 @@ import { useViewMode } from "@/hooks/useViewMode";
 import {
   formatBytes,
   formatByteRate,
-  formatByteRateLabel,
 } from "@/utils/format";
 import { calculateCostSummary, formatCnyMoney, getExchangeRates } from "@/utils/cost";
 import { useHiddenNodeUuids } from "@/hooks/useVisibleNodes";
-import { speedRateColor } from "@/utils/metricTone";
 import {
   getHomeGroupLabel,
   getHomeGroupOptions,
@@ -32,6 +38,12 @@ import {
   type HomeRegionOption,
 } from "@/utils/homeNodes";
 import { getDisplayRegionCode } from "@/utils/geo";
+import {
+  getAdaptiveDialCeiling,
+  getCockpitResourceSummary,
+  getCockpitNodeStates,
+  type CockpitResourceSummary,
+} from "@/utils/cockpitScale";
 import { useHomeSort } from "@/hooks/useHomeSort";
 import { useHomeNodeOrder } from "@/hooks/useHomeNodeOrder";
 import { useHourlyClock } from "@/hooks/useClock";
@@ -63,6 +75,13 @@ const GRID_LAYOUT: Record<NodeViewMode, { className: string; minColumnWidth: num
 };
 
 type MiniGridStyle = CSSProperties & { "--mini-card-min-width": string };
+type CockpitDialStyle = CSSProperties & {
+  "--cockpit-angle": string;
+  "--cockpit-progress": string;
+};
+type CockpitResourceStyle = CSSProperties & {
+  "--cockpit-resource-progress": string;
+};
 
 // 标准 UUID 不含逗号，可安全拼成稳定签名。
 const UUID_KEY_SEPARATOR = ",";
@@ -72,7 +91,7 @@ type IdleCapableWindow = Window & {
   cancelIdleCallback?: (handle: number) => void;
 };
 
-interface HomeOverview {
+interface HomeOverview extends CockpitResourceSummary {
   totalNodes: number;
   onlineNodes: number;
   offlineNodes: number;
@@ -84,7 +103,271 @@ interface HomeOverview {
 
 function formatCompactBytes(value: number): string {
   const [amount, unit = "B"] = formatBytes(value).split(" ");
-  return `${amount}${unit[0]}`;
+  const compactAmount = amount
+    .replace(/\.0+$/, "")
+    .replace(/(\.\d*?[1-9])0+$/, "$1");
+  return `${compactAmount}${unit[0]}`;
+}
+
+function getCockpitDialStyle(value: number, ceiling: number): CockpitDialStyle {
+  const ratio = ceiling > 0 ? Math.min(1, Math.max(0, value / ceiling)) : 0;
+  return {
+    "--cockpit-angle": `${132 + ratio * 276}deg`,
+    "--cockpit-progress": `${ratio * 276}deg`,
+  };
+}
+
+function CockpitScale({ ceiling }: { ceiling: number }) {
+  return (
+    <div className="home-cockpit-scale" aria-hidden>
+      <span className="home-cockpit-scale-start">0</span>
+      <span className="home-cockpit-scale-mark" data-position="one-sixth">
+        {formatCompactBytes(ceiling / 6)}
+      </span>
+      <span className="home-cockpit-scale-mark" data-position="one-third">
+        {formatCompactBytes(ceiling / 3)}
+      </span>
+      <span className="home-cockpit-scale-mark" data-position="half">
+        {formatCompactBytes(ceiling * 0.5)}
+      </span>
+      <span className="home-cockpit-scale-mark" data-position="two-thirds">
+        {formatCompactBytes((ceiling * 2) / 3)}
+      </span>
+      <span className="home-cockpit-scale-mark" data-position="five-sixths">
+        {formatCompactBytes((ceiling * 5) / 6)}
+      </span>
+      <span className="home-cockpit-scale-end">{formatCompactBytes(ceiling)}</span>
+    </div>
+  );
+}
+
+interface CockpitTelemetry {
+  samples: number[];
+}
+
+function buildTelemetryPaths(samples: number[]) {
+  const width = 240;
+  const height = 54;
+  const top = 5;
+  const bottom = 48;
+  const minimum = Math.min(...samples);
+  const maximum = Math.max(...samples);
+  const range = Math.max(maximum - minimum, maximum * 0.08, 1);
+  const points = samples.map((value, index) => {
+    const x = samples.length > 1 ? (index / (samples.length - 1)) * width : width;
+    const y = bottom - ((value - minimum) / range) * (bottom - top);
+    return [x, y] as const;
+  });
+  const path = points.reduce((result, point, index) => {
+    if (index === 0) return `M${point[0].toFixed(1)} ${point[1].toFixed(1)}`;
+    const previous = points[index - 1];
+    const beforePrevious = points[index - 2] ?? previous;
+    const next = points[index + 1] ?? point;
+    const controlOneX = previous[0] + (point[0] - beforePrevious[0]) / 6;
+    const controlOneY = previous[1] + (point[1] - beforePrevious[1]) / 6;
+    const controlTwoX = point[0] - (next[0] - previous[0]) / 6;
+    const controlTwoY = point[1] - (next[1] - previous[1]) / 6;
+    return `${result} C${controlOneX.toFixed(1)} ${controlOneY.toFixed(1)} ${controlTwoX.toFixed(1)} ${controlTwoY.toFixed(1)} ${point[0].toFixed(1)} ${point[1].toFixed(1)}`;
+  }, "");
+  return {
+    path,
+    areaPath: `${path} L${width} ${height} L0 ${height} Z`,
+    latestPoint: points.at(-1) ?? ([width, bottom] as const),
+  };
+}
+
+function useAnimatedTelemetrySamples(target: number[]) {
+  const currentRef = useRef(target);
+  const [current, setCurrent] = useState(target);
+
+  useEffect(() => {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reducedMotion) {
+      currentRef.current = target;
+      setCurrent(target);
+      return;
+    }
+
+    const from = currentRef.current;
+    const startedAt = performance.now();
+    let frame = 0;
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / 1_050);
+      const eased = 1 - (1 - progress) ** 3;
+      const next = target.map(
+        (value, index) => (from[index] ?? value) + (value - (from[index] ?? value)) * eased,
+      );
+      currentRef.current = next;
+      setCurrent(next);
+      if (progress < 1) frame = window.requestAnimationFrame(tick);
+    };
+    frame = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(frame);
+  }, [target]);
+
+  return current;
+}
+
+function useAnimatedMetricValue(target: number, duration = 1_100) {
+  const normalizedTarget = Number.isFinite(target) && target > 0 ? target : 0;
+  const currentRef = useRef(normalizedTarget);
+  const [display, setDisplay] = useState({
+    value: normalizedTarget,
+    animating: false,
+  });
+
+  useEffect(() => {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reducedMotion || currentRef.current === normalizedTarget) {
+      currentRef.current = normalizedTarget;
+      setDisplay({ value: normalizedTarget, animating: false });
+      return;
+    }
+
+    const from = currentRef.current;
+    const startedAt = performance.now();
+    let frame = 0;
+
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / duration);
+      const eased = 1 - (1 - progress) ** 3;
+      const value = from + (normalizedTarget - from) * eased;
+      currentRef.current = value;
+      setDisplay({ value, animating: progress < 1 });
+      if (progress < 1) frame = window.requestAnimationFrame(tick);
+    };
+
+    setDisplay((current) => ({ ...current, animating: true }));
+    frame = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(frame);
+  }, [duration, normalizedTarget]);
+
+  return display;
+}
+
+function AnimatedByteRate({ value }: { value: number }) {
+  const display = useAnimatedMetricValue(value);
+  const rate = formatByteRate(display.value);
+
+  return (
+    <p
+      className="home-cockpit-dial-value"
+      data-animating={display.animating ? "true" : "false"}
+      aria-label={`${rate.value} ${rate.unit}`}
+    >
+      {rate.value}
+      <span aria-hidden>{rate.unit}</span>
+    </p>
+  );
+}
+
+const COCKPIT_SCALE_DOWNSHIFT_DELAY_MS = 60_000;
+
+function useStableDialCeiling(value: number, fallback: number) {
+  const [ceiling, setCeiling] = useState(() => getAdaptiveDialCeiling(value, fallback));
+  const lowSinceRef = useRef<number | null>(null);
+  const requiredCeiling = getAdaptiveDialCeiling(value, fallback);
+  const displayedCeiling = value > ceiling * 0.9 && requiredCeiling > ceiling
+    ? requiredCeiling
+    : ceiling;
+
+  useEffect(() => {
+    if (value > ceiling * 0.9 && requiredCeiling > ceiling) {
+      lowSinceRef.current = null;
+      setCeiling(requiredCeiling);
+      return;
+    }
+    if (value > 0 && value < ceiling * 0.25 && requiredCeiling < ceiling) {
+      const now = Date.now();
+      lowSinceRef.current ??= now;
+      if (now - lowSinceRef.current >= COCKPIT_SCALE_DOWNSHIFT_DELAY_MS) {
+        lowSinceRef.current = null;
+        setCeiling(requiredCeiling);
+      }
+      return;
+    }
+    lowSinceRef.current = null;
+  }, [ceiling, requiredCeiling, value]);
+
+  return displayedCeiling;
+}
+
+function useCockpitTelemetry(value: number): CockpitTelemetry {
+  const [samples, setSamples] = useState<number[]>(() => Array(18).fill(value));
+
+  useEffect(() => {
+    setSamples((previous) =>
+      value > 0 && previous.every((sample) => sample <= 0)
+        ? Array(18).fill(value)
+        : [...previous.slice(1), value],
+    );
+  }, [value]);
+
+  return { samples };
+}
+
+function CockpitTelemetryWing({
+  direction,
+  telemetry,
+}: {
+  direction: "upload" | "download";
+  telemetry: CockpitTelemetry;
+}) {
+  const isUpload = direction === "upload";
+  const animatedSamples = useAnimatedTelemetrySamples(telemetry.samples);
+  const animatedPaths = useMemo(
+    () => buildTelemetryPaths(animatedSamples),
+    [animatedSamples],
+  );
+  const animatedAverage =
+    animatedSamples.reduce((sum, sample) => sum + sample, 0) / animatedSamples.length;
+  const average = formatByteRate(animatedAverage);
+  const peak = formatByteRate(Math.max(...animatedSamples));
+
+  return (
+    <article className="home-cockpit-telemetry" data-direction={direction}>
+      <header>
+        <span>{isUpload ? "上行实时趋势" : "下行实时趋势"}</span>
+        <i aria-hidden>{isUpload ? "↗" : "↙"}</i>
+      </header>
+      <svg viewBox="0 0 240 54" preserveAspectRatio="none" aria-hidden>
+        <defs>
+          <linearGradient id={`cockpit-${direction}-area`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="currentColor" stopOpacity="0.34" />
+            <stop offset="1" stopColor="currentColor" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path
+          className="home-cockpit-telemetry-grid"
+          d="M0 17 H240 M0 35 H240 M60 0 V54 M120 0 V54 M180 0 V54"
+        />
+        <path
+          className="home-cockpit-telemetry-area"
+          d={animatedPaths.areaPath}
+          fill={`url(#cockpit-${direction}-area)`}
+        />
+        <path className="home-cockpit-telemetry-line" d={animatedPaths.path} />
+        <path className="home-cockpit-telemetry-pulse" d={animatedPaths.path} />
+        <circle
+          className="home-cockpit-telemetry-end-ring"
+          cx={animatedPaths.latestPoint[0]}
+          cy={animatedPaths.latestPoint[1]}
+          r="4.4"
+        />
+        <circle
+          className="home-cockpit-telemetry-end-dot"
+          cx={animatedPaths.latestPoint[0]}
+          cy={animatedPaths.latestPoint[1]}
+          r="2.1"
+        />
+      </svg>
+      <div className="home-cockpit-telemetry-stats">
+        <span>均值 <strong>{average.value}{average.unit}</strong></span>
+        <span>峰值 <strong>{peak.value}{peak.unit}</strong></span>
+        <span>近 36 秒</span>
+      </div>
+    </article>
+  );
 }
 
 function TrafficBarsIcon({ size = 19 }: { size?: number }) {
@@ -100,6 +383,126 @@ function TrafficBarsIcon({ size = 19 }: { size?: number }) {
       <rect x="8" y="5.5" width="4" height="12.5" rx="1.2" fill="currentColor" />
       <rect x="14" y="2" width="4" height="16" rx="1.2" fill="currentColor" />
     </svg>
+  );
+}
+
+function CockpitNodeStatusRing({
+  totalNodes,
+  onlineNodes,
+  offlineNodes,
+}: {
+  totalNodes: number;
+  onlineNodes: number;
+  offlineNodes: number;
+}) {
+  const states = getCockpitNodeStates(totalNodes, onlineNodes, offlineNodes);
+  const radius = 72;
+  const centerX = 140;
+  const centerY = 83;
+  const startAngle = 150;
+  const sweepAngle = 240;
+  const markerRadius = states.length <= 12 ? 3.5 : states.length <= 30 ? 2.5 : 2.1;
+
+  return (
+    <div
+      className="home-cockpit-node-cluster"
+      aria-label={`在线 ${onlineNodes} 个，共 ${totalNodes} 个节点，离线 ${offlineNodes} 个`}
+    >
+      <svg viewBox="0 0 280 128" aria-hidden>
+        <path
+          className="home-cockpit-node-ring-guide"
+          d="M77.6 119 A72 72 0 1 1 202.4 119"
+        />
+        <path
+          className="home-cockpit-node-ring-sweep"
+          d="M77.6 119 A72 72 0 1 1 202.4 119"
+        />
+        {states.map((state, index) => {
+          const progress = states.length === 1 ? 0.5 : index / (states.length - 1);
+          const angle = ((startAngle + progress * sweepAngle) * Math.PI) / 180;
+          const x = centerX + Math.cos(angle) * radius;
+          const y = centerY + Math.sin(angle) * radius;
+          return (
+            <circle
+              key={`${index}-${state}`}
+              className="home-cockpit-node-marker"
+              data-state={state}
+              cx={x}
+              cy={y}
+              r={markerRadius}
+              style={{ animationDelay: `${Math.min(index * 18, 420)}ms` }}
+            />
+          );
+        })}
+      </svg>
+      <div className="home-cockpit-online">
+        <p>
+          {onlineNodes}
+          <span>/ {totalNodes}</span>
+        </p>
+        <span>{totalNodes > 0 ? "在线节点" : "等待节点"}</span>
+      </div>
+    </div>
+  );
+}
+
+function formatCockpitPercent(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return "0%";
+  return `${value >= 10 ? Math.round(value) : value.toFixed(1)}%`;
+}
+
+function CockpitResourceStrip({ summary }: { summary: CockpitResourceSummary }) {
+  const resources = [
+    {
+      key: "cpu",
+      label: "CPU",
+      value: formatCockpitPercent(summary.cpuPct),
+      detail: `${summary.cpuCores.toLocaleString()} 核`,
+      fraction: summary.cpuPct / 100,
+      title: `在线节点 CPU 加权利用率 ${formatCockpitPercent(summary.cpuPct)}，共 ${summary.cpuCores.toLocaleString()} 核`,
+    },
+    {
+      key: "memory",
+      label: "内存",
+      value: formatCockpitPercent(summary.ramTotal > 0 ? (summary.ramUsed / summary.ramTotal) * 100 : 0),
+      detail: `${formatCompactBytes(summary.ramUsed)} / ${formatCompactBytes(summary.ramTotal)}`,
+      fraction: summary.ramTotal > 0 ? summary.ramUsed / summary.ramTotal : 0,
+      title: `在线节点内存 ${formatBytes(summary.ramUsed)} / ${formatBytes(summary.ramTotal)}`,
+    },
+    {
+      key: "disk",
+      label: "硬盘",
+      value: formatCockpitPercent(summary.diskTotal > 0 ? (summary.diskUsed / summary.diskTotal) * 100 : 0),
+      detail: `${formatCompactBytes(summary.diskUsed)} / ${formatCompactBytes(summary.diskTotal)}`,
+      fraction: summary.diskTotal > 0 ? summary.diskUsed / summary.diskTotal : 0,
+      title: `在线节点硬盘 ${formatBytes(summary.diskUsed)} / ${formatBytes(summary.diskTotal)}`,
+    },
+  ];
+
+  return (
+    <div className="home-cockpit-resource-strip" aria-label="在线节点资源汇总">
+      {resources.map((resource) => (
+        <div
+          key={resource.key}
+          className="home-cockpit-resource-item"
+          data-resource={resource.key}
+          title={resource.title}
+        >
+          <span className="home-cockpit-resource-head">
+            <small>{resource.label}</small>
+            <strong>{resource.value}</strong>
+          </span>
+          <span className="home-cockpit-resource-track" aria-hidden>
+            <i
+              style={{
+                "--cockpit-resource-progress": `${Math.min(1, Math.max(0, resource.fraction)) * 100}%`,
+              } as CockpitResourceStyle}
+            />
+          </span>
+          <span className="home-cockpit-resource-detail">{resource.detail}</span>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -129,6 +532,7 @@ function HomeOverviewCards({
   renewalNodes,
   dense,
   onWarmTraffic,
+  controls,
 }: {
   overview: HomeOverview;
   costSummary: { remainingCny: number } | null;
@@ -144,24 +548,25 @@ function HomeOverviewCards({
   showDetailButton: boolean;
   renewalNodes: RenewalReminderSource[];
   onWarmTraffic: () => void;
+  controls?: ReactNode;
 }) {
   const [trafficValue, trafficUnit] = formatBytes(
     overview.trafficUp + overview.trafficDown,
   ).split(" ");
-  const rate = formatByteRate(overview.netUp + overview.netDown);
-  const onlinePct =
-    overview.totalNodes > 0 ? (overview.onlineNodes / overview.totalNodes) * 100 : 0;
-  const offlinePct =
-    overview.totalNodes > 0 ? (overview.offlineNodes / overview.totalNodes) * 100 : 0;
+  const uploadCeiling = useStableDialCeiling(overview.netUp, 1024 ** 2);
+  const downloadCeiling = useStableDialCeiling(overview.netDown, 1024 ** 2);
+  const uploadDialStyle = getCockpitDialStyle(overview.netUp, uploadCeiling);
+  const downloadDialStyle = getCockpitDialStyle(overview.netDown, downloadCeiling);
+  const uploadTelemetry = useCockpitTelemetry(overview.netUp);
+  const downloadTelemetry = useCockpitTelemetry(overview.netDown);
   const remainingValue = costSummary
     ? formatCnyMoney(costSummary.remainingCny)
     : costLoading
       ? "计算中"
       : "—";
   const trafficDetailLabel = `↑ ${formatBytes(overview.trafficUp)} · ↓ ${formatBytes(overview.trafficDown)}`;
-  const trafficCompactLabel = `↑${formatCompactBytes(overview.trafficUp)} ↓${formatCompactBytes(overview.trafficDown)}`;
-  const bandwidthDetailLabel = `↑ ${formatByteRateLabel(overview.netUp)} · ↓ ${formatByteRateLabel(overview.netDown)}`;
-  const bandwidthCompactLabel = `↑${formatCompactBytes(overview.netUp)} ↓${formatCompactBytes(overview.netDown)}`;
+  const uploadDetailLabel = `累计出口 · ${formatBytes(overview.trafficUp)}`;
+  const downloadDetailLabel = `累计入口 · ${formatBytes(overview.trafficDown)}`;
   const trafficRating =
     showOverviewRatings && showTrafficRating
       ? getOverviewRating({
@@ -170,11 +575,19 @@ function HomeOverviewCards({
           customLabels: trafficRatingLabels,
         })
       : null;
-  const bandwidthRating =
+  const uploadRating =
     showOverviewRatings && showBandwidthRating
       ? getOverviewRating({
           kind: "bandwidth",
-          value: overview.netUp + overview.netDown,
+          value: overview.netUp,
+          customLabels: bandwidthRatingLabels,
+        })
+      : null;
+  const downloadRating =
+    showOverviewRatings && showBandwidthRating
+      ? getOverviewRating({
+          kind: "bandwidth",
+          value: overview.netDown,
           customLabels: bandwidthRatingLabels,
         })
       : null;
@@ -186,109 +599,109 @@ function HomeOverviewCards({
           customLabels: assetRatingLabels,
         })
       : null;
-
   const renderRating = (rating: OverviewRating | null) =>
     rating ? (
       <span className="overview-card-rating" data-rating-level={rating.level} title={rating.label}>
         {rating.label}
       </span>
     ) : null;
+  const renderRatingDot = (rating: OverviewRating | null) =>
+    rating ? (
+      <i
+        className="home-cockpit-summary-rating"
+        data-rating-level={rating.level}
+        title={rating.label}
+        aria-label={rating.label}
+      />
+    ) : null;
 
   return (
-    <section className={`home-overview${dense ? " is-dense" : ""}`} aria-label="首页总览">
-      <article className="overview-card" data-metric="online">
-        <span className="overview-card-label">在线节点</span>
-        <div className="overview-card-main">
-          <p className="overview-card-value">
-            {overview.onlineNodes}
-            <span className="overview-card-unit">/ {overview.totalNodes}</span>
-          </p>
+    <section
+      className={`home-cockpit-overview${dense ? " is-dense" : ""}`}
+      aria-label="首页驾驶舱总览"
+    >
+      <article className="home-cockpit-dial-panel" data-metric="upload">
+        <div className="home-cockpit-dial" style={uploadDialStyle}>
+          <span className="home-cockpit-dial-scan" aria-hidden />
+          <span className="home-cockpit-dial-arc" aria-hidden />
+          <span className="home-cockpit-dial-orbit" aria-hidden />
+          <span className="home-cockpit-dial-needle" aria-hidden />
+          <span className="home-cockpit-dial-hub" aria-hidden />
+          <div className="home-cockpit-dial-content">
+            <span className="home-cockpit-dial-label">实时上行</span>
+            <AnimatedByteRate value={overview.netUp} />
+            <p className="home-cockpit-dial-detail" title={uploadDetailLabel}>
+              <span className="home-cockpit-detail-full">{uploadDetailLabel}</span>
+              <span className="home-cockpit-detail-compact">累计 {formatCompactBytes(overview.trafficUp)}</span>
+            </p>
+          </div>
+          <CockpitScale ceiling={uploadCeiling} />
         </div>
-        {overview.totalNodes >= 5 && overview.totalNodes <= 10 ? (
-          // 节点数 5–10 时改用块状:每台一格,在线格在左、离线格在右、未知格居中,
-          // 与条状的「左绿右红」完全同步。颜色复用同一组 token,避免该红却绿。
-          <div className="overview-blocks" role="presentation">
-            {Array.from({ length: overview.totalNodes }, (_, i) => {
-              const cls =
-                i < overview.onlineNodes
-                  ? "overview-block is-online"
-                  : i >= overview.totalNodes - overview.offlineNodes
-                    ? "overview-block is-offline"
-                    : "overview-block";
-              return <span key={i} className={cls} />;
-            })}
-          </div>
-        ) : (
-          <div className="overview-bar" role="presentation">
-            <span className="overview-bar-online" style={{ width: `${onlinePct}%` }} />
-            <span className="overview-bar-offline" style={{ width: `${offlinePct}%` }} />
-          </div>
-        )}
+        {renderRating(uploadRating)}
       </article>
 
-      <article className="overview-card" data-metric="bandwidth">
-        <span className="overview-card-label">实时带宽</span>
-        <div className="overview-card-main">
-          <p
-            className="overview-card-value"
-            style={{ color: speedRateColor(rate.unit) }}
-          >
-            {rate.value}
-            <span className="overview-card-unit">{rate.unit}</span>
-          </p>
-        </div>
-        <div className="overview-card-footer">
-          <p className="overview-card-sub" title={bandwidthDetailLabel}>
-            <span className="overview-card-sub-full">{bandwidthDetailLabel}</span>
-            <span className="overview-card-sub-compact">{bandwidthCompactLabel}</span>
-          </p>
-          {renderRating(bandwidthRating)}
-        </div>
-      </article>
+      <CockpitTelemetryWing direction="upload" telemetry={uploadTelemetry} />
 
-      <article className="overview-card" data-metric="traffic">
-        <div className="overview-card-head">
-          <span className="overview-card-label">累计流量</span>
+      <article className="home-cockpit-center-panel" data-metric="online">
+        <div className="home-cockpit-center-topline">
+          <span className="home-cockpit-ready"><i aria-hidden />READY</span>
+          <span className="home-cockpit-sync">DATA · LIVE</span>
+        </div>
+        <div className="home-cockpit-center-stage">
+          <div className="home-cockpit-asset home-cockpit-side-summary">
+            <div className="home-cockpit-summary-heading">
+              <span className="home-cockpit-summary-label">资产余额</span>
+              {showDetailButton && <RenewalReminder nodes={renewalNodes} />}
+              {renderRatingDot(showDetailButton ? null : assetRating)}
+            </div>
+            <strong>{remainingValue}</strong>
+          </div>
+          <CockpitNodeStatusRing
+            totalNodes={overview.totalNodes}
+            onlineNodes={overview.onlineNodes}
+            offlineNodes={overview.offlineNodes}
+          />
           <Link
             to="/traffic"
-            className="overview-card-action"
-            aria-label="打开今日流量统计页"
-            title="今日流量统计"
+            className="home-cockpit-traffic-summary home-cockpit-side-summary"
+            aria-label={`打开今日流量统计页，累计流量 ${trafficValue} ${trafficUnit}`}
+            title={trafficDetailLabel}
             onPointerEnter={onWarmTraffic}
             onFocus={onWarmTraffic}
             onClick={onWarmTraffic}
           >
-            <TrafficBarsIcon />
+            <span className="home-cockpit-summary-label">
+              <TrafficBarsIcon size={11} />累计流量
+              {renderRatingDot(trafficRating)}
+            </span>
+            <strong>{trafficValue}<small>{trafficUnit}</small></strong>
           </Link>
         </div>
-        <div className="overview-card-main">
-          <p className="overview-card-value">
-            {trafficValue}
-            <span className="overview-card-unit">{trafficUnit}</span>
-          </p>
-        </div>
-        <div className="overview-card-footer">
-          <p className="overview-card-sub" title={trafficDetailLabel}>
-            <span className="overview-card-sub-full">{trafficDetailLabel}</span>
-            <span className="overview-card-sub-compact">{trafficCompactLabel}</span>
-          </p>
-          {renderRating(trafficRating)}
-        </div>
+        <CockpitResourceStrip summary={overview} />
       </article>
 
-      <article className="overview-card" data-metric="asset">
-        <div className="overview-card-head">
-          <span className="overview-card-label">资产概览</span>
-          {showDetailButton && <RenewalReminder nodes={renewalNodes} />}
+      <CockpitTelemetryWing direction="download" telemetry={downloadTelemetry} />
+
+      <article className="home-cockpit-dial-panel" data-metric="download">
+        <div className="home-cockpit-dial" style={downloadDialStyle}>
+          <span className="home-cockpit-dial-scan" aria-hidden />
+          <span className="home-cockpit-dial-arc" aria-hidden />
+          <span className="home-cockpit-dial-orbit" aria-hidden />
+          <span className="home-cockpit-dial-needle" aria-hidden />
+          <span className="home-cockpit-dial-hub" aria-hidden />
+          <div className="home-cockpit-dial-content">
+            <span className="home-cockpit-dial-label">实时下行</span>
+            <AnimatedByteRate value={overview.netDown} />
+            <p className="home-cockpit-dial-detail" title={downloadDetailLabel}>
+              <span className="home-cockpit-detail-full">{downloadDetailLabel}</span>
+              <span className="home-cockpit-detail-compact">累计 {formatCompactBytes(overview.trafficDown)}</span>
+            </p>
+          </div>
+          <CockpitScale ceiling={downloadCeiling} />
         </div>
-        <div className="overview-card-main">
-          <p className="overview-card-value">{remainingValue}</p>
-        </div>
-        <div className="overview-card-footer">
-          <p className="overview-card-caption">实时汇率计算</p>
-          {renderRating(assetRating)}
-        </div>
+        {renderRating(downloadRating)}
       </article>
+      {controls && <div className="home-cockpit-toolbar">{controls}</div>}
     </section>
   );
 }
@@ -361,6 +774,7 @@ function RegionTabs({
           );
         })}
       </div>
+      <span className="home-region-scroll-cue" aria-hidden>›</span>
     </section>
   );
 }
@@ -449,6 +863,7 @@ export function NodeGrid() {
       trafficDown,
       netUp,
       netDown,
+      ...getCockpitResourceSummary(visibleNodes),
     };
   }, [visibleNodes]);
   const showHomeOverview = themeSettings.isReady && themeSettings.showHomeOverview;
@@ -690,6 +1105,27 @@ export function NodeGrid() {
           bandwidthRatingLabels={themeSettings.bandwidthRatingLabels}
           assetRatingLabels={themeSettings.assetRatingLabels}
           onWarmTraffic={warmTrafficPage}
+          controls={
+            showGroupTabs || showRegionBar || showHomeSort ? (
+              <>
+                {showGroupTabs && (
+                  <GroupTabs
+                    groups={groupOptions}
+                    selectedGroup={selectedGroup}
+                    onSelectGroup={setSelectedGroup}
+                  />
+                )}
+                {showRegionBar && (
+                  <RegionTabs
+                    regions={regionOptions}
+                    selectedRegion={selectedRegion}
+                    onSelectRegion={setSelectedRegion}
+                  />
+                )}
+                {showHomeSort && <HomeSortControl state={sort} />}
+              </>
+            ) : undefined
+          }
         />
       )}
     </>
@@ -710,7 +1146,7 @@ export function NodeGrid() {
   return (
     <>
       {homeHeader}
-      {(showGroupTabs || showHomeSort) && (
+      {!showHomeOverview && (showGroupTabs || showHomeSort) && (
         // 分组标签落首列、排序钉在末列右侧；窄屏时两者保持在同一控件栏内。
         <div className={controlsWrapClassName} style={controlsStyle}>
           {showGroupTabs && (
@@ -723,7 +1159,7 @@ export function NodeGrid() {
           {showHomeSort && <HomeSortControl state={sort} />}
         </div>
       )}
-      {showRegionBar && (
+      {!showHomeOverview && showRegionBar && (
         <RegionTabs
           regions={regionOptions}
           selectedRegion={selectedRegion}

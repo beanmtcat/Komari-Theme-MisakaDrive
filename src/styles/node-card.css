@@ -43,6 +43,15 @@
   gap: 14px;
 }
 
+.server-card-content.is-header-compact {
+  gap: 4px;
+  padding-top: 14px;
+}
+
+.server-card-content.is-header-compact .server-card-header {
+  align-items: center;
+}
+
 .server-card-header {
   display: flex;
   align-items: flex-start;
@@ -141,6 +150,20 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+}
+
+.server-card-header-tags {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.server-card-header-tags .dstatus-tag-chip {
+  min-height: 22px;
+  padding-block: 0.28rem;
 }
 
 /* V4/V6 双栈标识药丸：仅字样（不显示真实 IP）。data-tag="green" 复用绿色标签的 token，与标签统一 */

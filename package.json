@@ -1,10 +1,10 @@
 {
-  "name": "komari-theme-luminaPlus",
+  "name": "komari-theme-misaka-drive",
   "private": true,
-  "version": "1.2.8",
+  "version": "2.0.0",
   "type": "module",
-  "description": "Komari-Theme-LuminaPlus",
-  "author": "codex&shark&shanyang",
+  "description": "Misaka Drive — a telemetry-inspired Komari dashboard theme",
+  "author": "beanmtcat",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

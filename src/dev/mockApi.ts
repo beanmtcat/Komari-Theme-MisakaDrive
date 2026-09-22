@@ -214,6 +214,8 @@ function latestStatus() {
         statusProfiles[index];
       if (!online) return [node.uuid, { online: false }];
       const memoryPct = index === 2 ? 88 : 36 + index * 7;
+      const uploadPulse = 0.82 + Math.sin(now / 2_800 + index * 0.86) * 0.18;
+      const downloadPulse = 0.8 + Math.cos(now / 3_200 + index * 0.72) * 0.2;
       return [
         node.uuid,
         {
@@ -228,8 +230,8 @@ function latestStatus() {
           load15: load * 0.72,
           disk: (node.disk_total * diskPct) / 100,
           disk_total: node.disk_total,
-          net_out: up,
-          net_in: down,
+          net_out: up * uploadPulse,
+          net_in: down * downloadPulse,
           net_total_up: totalUp,
           net_total_down: totalDown,
           uptime: (index + 3) * 864_000,
@@ -464,7 +466,7 @@ export function installDevMockApi() {
   // ?mock=1&admin=1 模拟已登录管理员,连带放开 /api/admin/*,ThemeManage 才可在 dev 调试。
   const adminMode = new URLSearchParams(window.location.search).get("admin") === "1";
   // 保存后的主题设置驻留内存,让「保存 → /api/public refetch」链路在 dev 里闭环。
-  const defaultTheme = "komari-theme-luminaPlus";
+  const defaultTheme = "komari-theme-misaka-drive";
   const savedThemeSettings: Record<string, Record<string, unknown>> = {};
 
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -519,9 +521,9 @@ export function installDevMockApi() {
     if (url.pathname === "/api/public") {
       const theme = url.searchParams.get("theme") ?? defaultTheme;
       return json({
-        sitename: "Lumina Ops",
+        sitename: "Misaka Drive",
         description: "全球节点运行状态",
-        theme: "komari-theme-luminaPlus",
+        theme: "komari-theme-misaka-drive",
         allow_cors: false,
         disable_password_login: false,
         oauth_enable: false,

@@ -10,7 +10,7 @@ describe("overview ratings", () => {
   it("rates assets by the configured CNY ranges", () => {
     expect(getOverviewRating({ kind: "asset", value: 500 })).toEqual({
       level: 0,
-      label: "入门",
+      label: "基础",
     });
     expect(getOverviewRating({ kind: "asset", value: 1500 })).toEqual({
       level: 1,
@@ -18,11 +18,11 @@ describe("overview ratings", () => {
     });
     expect(getOverviewRating({ kind: "asset", value: 3000 })).toEqual({
       level: 2,
-      label: "顶级",
+      label: "充裕",
     });
     expect(getOverviewRating({ kind: "asset", value: 3000.01 })).toEqual({
       level: 3,
-      label: "富佬",
+      label: "丰沛",
     });
   });
 
@@ -33,7 +33,7 @@ describe("overview ratings", () => {
     });
     expect(getOverviewRating({ kind: "bandwidth", value: 672 * 1024 / 8 })).toEqual({
       level: 0,
-      label: "闲置",
+      label: "低负载",
     });
   });
 
@@ -59,8 +59,8 @@ describe("overview ratings", () => {
     expect(normalizeOverviewRatingLabels("asset", "萌新,进阶")).toEqual([
       "萌新",
       "进阶",
-      "顶级",
-      "富佬",
+      "充裕",
+      "丰沛",
     ]);
   });
 });
